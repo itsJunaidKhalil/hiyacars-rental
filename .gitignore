@@ -3,7 +3,7 @@
 dist/
 web-build/
 docs/
-
+.venv/
 # Node
 node_modules/
 npm-debug.log*
