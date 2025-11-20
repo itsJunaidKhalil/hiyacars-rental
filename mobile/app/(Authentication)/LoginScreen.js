@@ -6,6 +6,8 @@ import {
     Image,
     TouchableOpacity,
     ScrollView,
+    Alert,
+    ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from '@expo/vector-icons';
@@ -15,15 +17,54 @@ import PasswordInput from '../../components/PasswordInput';
 import CustomButton from '../../components/CustomButton';
 import Colors from '../../constant/Colors'; // Importing Colors
 import CustomeFonts from '../../constant/customeFonts'; // Importing Custom Fonts for text styling
+import { useAuth } from '../../contexts/AuthContext';
 
 const LoginScreen = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [rememberMe, setRememberMe] = useState(true);
+    const [loading, setLoading] = useState(false);
+    const { login, signInWithGoogle, signInWithFacebook } = useAuth();
 
-    const handleLogin = () => {
-        console.log('Login pressed', { email, password, rememberMe });
-        router.push('/HomeScreen'); // Navigate to HomeScreen after login
+    // Simple email validation
+    const validateEmail = (email) => {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return emailRegex.test(email);
+    };
+
+    const handleLogin = async () => {
+        const trimmedEmail = email.trim();
+        
+        if (!trimmedEmail || !password) {
+            Alert.alert('Error', 'Please fill in all fields');
+            return;
+        }
+
+        // Validate email format
+        if (!validateEmail(trimmedEmail)) {
+            Alert.alert('Invalid Email', 'Please enter a valid email address (e.g., example@email.com)');
+            return;
+        }
+
+        setLoading(true);
+        try {
+            await login(trimmedEmail, password);
+            router.replace('/(tabs)/HomeScreen'); // Navigate to HomeScreen after login
+        } catch (error) {
+            let errorMessage = 'Invalid email or password';
+            if (error.message) {
+                if (error.message.includes('Invalid login credentials')) {
+                    errorMessage = 'Invalid email or password. Please try again.';
+                } else if (error.message.includes('Email not confirmed')) {
+                    errorMessage = 'Please check your email and confirm your account before logging in.';
+                } else {
+                    errorMessage = error.message;
+                }
+            }
+            Alert.alert('Login Failed', errorMessage);
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handleSignUp = () => {
@@ -34,12 +75,21 @@ const LoginScreen = () => {
         router.push('/ForgotPasswordScreen');
     };
 
-    const handleAppleLogin = () => {
-        console.log('Apple login pressed');
+    const handleAppleLogin = async () => {
+        // Apple OAuth can be added similarly
+        Alert.alert('Coming Soon', 'Apple login will be available soon');
     };
 
-    const handleGoogleLogin = () => {
-        console.log('Google login pressed');
+    const handleGoogleLogin = async () => {
+        try {
+            setLoading(true);
+            await signInWithGoogle();
+            // OAuth will redirect, so navigation is handled by Supabase
+        } catch (error) {
+            Alert.alert('Error', error.message || 'Google login failed');
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -94,10 +144,11 @@ const LoginScreen = () => {
 
                 {/* Login Button */}
                 <CustomButton
-                    title="Login"
+                    title={loading ? "Logging in..." : "Login"}
                     onPress={handleLogin}
                     variant="filled"
                     style={{ backgroundColor: Colors.Primary }}
+                    disabled={loading}
                 />
 
                 {/* Sign Up Button */}

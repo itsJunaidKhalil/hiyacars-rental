@@ -2,6 +2,7 @@
 .expo/
 dist/
 web-build/
+docs/
 
 # Node
 node_modules/
