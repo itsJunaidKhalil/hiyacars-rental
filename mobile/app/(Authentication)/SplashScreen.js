@@ -1,13 +1,11 @@
 import { StyleSheet, Text, View } from "react-native";
 import React, { useEffect } from "react";
-import { useNavigation } from "expo-router";
+import { router } from "expo-router";
 
 const SplashScreen = () => {
-    const navigation = useNavigation();
-
     useEffect(() => {
         const timeoutId = setTimeout(() => {
-            navigation.replace("OnboardingScreen");
+            router.replace("/OnboardingScreen");
         }, 3000);
 
         return () => clearTimeout(timeoutId);

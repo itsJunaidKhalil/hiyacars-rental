@@ -7,20 +7,68 @@ import {
     TextInput,
     TouchableOpacity,
     FlatList,
+    ActivityIndicator,
+    RefreshControl,
 } from 'react-native';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Colors from '../../constant/Colors';
 import CarCard from '../../components/CarCard';
-import { cars, categories, nearbyCars } from '../../constant/DummyData';
+import { categories } from '../../constant/DummyData';
 import { router } from 'expo-router';
-
-
+import ApiService from '../../services/api';
+import { useAuth } from '../../contexts/AuthContext';
 
 export default function HomeScreen() {
     const [selectedCategory, setSelectedCategory] = useState('Sedan');
-    const [availableCars, setAvailableCars] = useState(cars);
+    const [availableCars, setAvailableCars] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
+    const { isAuthenticated } = useAuth();
+
+    useEffect(() => {
+        fetchVehicles();
+    }, []);
+
+    const fetchVehicles = async () => {
+        try {
+            setLoading(true);
+            const vehicles = await ApiService.getVehicles({
+                status: 'available',
+                page: 1,
+                limit: 20,
+            });
+            
+            // Transform API response to match CarCard component expectations
+            const transformedVehicles = vehicles.map((vehicle) => ({
+                id: vehicle.id,
+                name: `${vehicle.make} ${vehicle.model}`,
+                location: vehicle.location,
+                seats: vehicle.seats,
+                price: `AED ${vehicle.price_per_day}/Day`,
+                image: vehicle.images && vehicle.images.length > 0 
+                    ? { uri: vehicle.images[0] } 
+                    : require('../../assets/cars/car_1.png'),
+                isFavorite: false,
+                rating: vehicle.rating || 0,
+            }));
+            
+            setAvailableCars(transformedVehicles);
+        } catch (error) {
+            console.error('Error fetching vehicles:', error);
+            // Fallback to empty array on error
+            setAvailableCars([]);
+        } finally {
+            setLoading(false);
+            setRefreshing(false);
+        }
+    };
+
+    const onRefresh = () => {
+        setRefreshing(true);
+        fetchVehicles();
+    };
 
     const handleFavoritePress = (carId) => {
         setAvailableCars(prevCars =>
@@ -32,7 +80,6 @@ export default function HomeScreen() {
 
     const handleBookPress = (car) => {
         router.push(`/Home/BookingDetailsScreen?carId=${car.id}`);
-        // Navigate to booking screen or show booking modal
     };
 
     const renderCategory = ({ item }) => (
@@ -61,12 +108,30 @@ export default function HomeScreen() {
         />
     );
 
+    if (loading && availableCars.length === 0) {
+        return (
+            <SafeAreaView style={styles.container} edges={['top']}>
+                <View style={styles.loadingContainer}>
+                    <ActivityIndicator size="large" color={Colors.Primary} />
+                    <Text style={styles.loadingText}>Loading vehicles...</Text>
+                </View>
+            </SafeAreaView>
+        );
+    }
+
     return (
         <SafeAreaView style={styles.container} edges={['top']}>
             <ScrollView
                 style={styles.scrollView}
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={styles.scrollContent}
+                refreshControl={
+                    <RefreshControl
+                        refreshing={refreshing}
+                        onRefresh={onRefresh}
+                        colors={[Colors.Primary]}
+                    />
+                }
             >
                 {/* Header */}
                 <View style={styles.header}>
@@ -130,14 +195,21 @@ export default function HomeScreen() {
                 </View>
 
                 {/* Cars Grid */}
-                <FlatList
-                    data={availableCars}
-                    renderItem={renderCarCard}
-                    keyExtractor={(item) => item.id}
-                    numColumns={2}
-                    scrollEnabled={false}
-                    columnWrapperStyle={styles.carRow}
-                />
+                {availableCars.length > 0 ? (
+                    <FlatList
+                        data={availableCars}
+                        renderItem={renderCarCard}
+                        keyExtractor={(item) => item.id}
+                        numColumns={2}
+                        scrollEnabled={false}
+                        columnWrapperStyle={styles.carRow}
+                    />
+                ) : (
+                    <View style={styles.emptyContainer}>
+                        <Text style={styles.emptyText}>No vehicles available</Text>
+                        <Text style={styles.emptySubtext}>Pull down to refresh</Text>
+                    </View>
+                )}
 
                 {/* Nearby Section */}
                 <View style={styles.sectionHeader}>
@@ -329,5 +401,29 @@ const styles = StyleSheet.create({
     },
     bottomSpacer: {
         height: 20,
+    },
+    loadingContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    loadingText: {
+        marginTop: 16,
+        fontSize: 16,
+        color: Colors.TextSecondary,
+    },
+    emptyContainer: {
+        padding: 40,
+        alignItems: 'center',
+    },
+    emptyText: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: Colors.TextPrimary,
+        marginBottom: 8,
+    },
+    emptySubtext: {
+        fontSize: 14,
+        color: Colors.TextSecondary,
     },
 });

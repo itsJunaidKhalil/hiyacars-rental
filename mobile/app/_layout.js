@@ -1,12 +1,16 @@
 import { Stack } from "expo-router";
+import { AuthProvider } from "../contexts/AuthContext";
 
 export default () => {
   return (
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="index" />
-      <Stack.Screen name="(tabs)" />
-      <Stack.Screen name="(Authentication)" />
-      <Stack.Screen name="Home" />
-    </Stack>
+    <AuthProvider>
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="index" />
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="(Authentication)" />
+        <Stack.Screen name="Home" />
+        <Stack.Screen name="auth/callback" />
+      </Stack>
+    </AuthProvider>
   );
 };

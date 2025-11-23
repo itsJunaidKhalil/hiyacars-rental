@@ -8,6 +8,7 @@ import {
     Dimensions,
     Image,
     FlatList,
+    TouchableOpacity,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
@@ -39,10 +40,13 @@ const onboardingData = [
 export default function OnboardingScreen() {
     const [currentIndex, setCurrentIndex] = useState(0);
     const flatListRef = useRef(null);
+    const currentIndexRef = useRef(0); // Use ref for immediate access
 
     const onViewableItemsChanged = useRef(({ viewableItems }) => {
         if (viewableItems.length > 0) {
-            setCurrentIndex(viewableItems[0].index);
+            const index = viewableItems[0].index;
+            setCurrentIndex(index);
+            currentIndexRef.current = index; // Update ref as well
         }
     }).current;
 
@@ -51,12 +55,17 @@ export default function OnboardingScreen() {
     }).current;
 
     const handleNext = () => {
+        // Use currentIndex state directly
         if (currentIndex < onboardingData.length - 1) {
             const nextIndex = currentIndex + 1;
-            flatListRef.current?.scrollToIndex({ index: nextIndex, animated: true });
+            // Use scrollToOffset directly as it's more reliable
+            flatListRef.current?.scrollToOffset({
+                offset: nextIndex * width,
+                animated: true,
+            });
         } else {
             // Navigate to LoginScreen after last onboarding screen
-            router.push("/LoginScreen");
+            router.replace("/(Authentication)/LoginScreen");
         }
     };
 
@@ -106,22 +115,17 @@ export default function OnboardingScreen() {
                             ) : null}
 
                             {/* Pagination Indicators */}
-                            <View style={styles.paginationContainer}>
-                                {onboardingData.map((_, index) => (
+                            <View style={styles.paginationContainer} pointerEvents="none">
+                                {onboardingData.map((_, idx) => (
                                     <View
-                                        key={index}
+                                        key={idx}
                                         style={[
                                             styles.paginationDot,
-                                            currentIndex === index && styles.activeDot
+                                            index === idx && styles.activeDot
                                         ]}
                                     />
                                 ))}
                             </View>
-
-                            <CustomButton
-                                title={currentIndex === onboardingData.length - 1 ? "Get Started" : "Next"}
-                                onPress={handleNext}
-                            />
                         </View>
                     </SafeAreaView>
                 </LinearGradient>
@@ -140,6 +144,7 @@ export default function OnboardingScreen() {
                 keyExtractor={(item) => item.id.toString()}
                 horizontal
                 pagingEnabled
+                scrollEnabled={true}
                 showsHorizontalScrollIndicator={false}
                 onViewableItemsChanged={onViewableItemsChanged}
                 viewabilityConfig={viewabilityConfig}
@@ -148,7 +153,27 @@ export default function OnboardingScreen() {
                     offset: width * index,
                     index,
                 })}
+                onScrollToIndexFailed={(info) => {
+                    const wait = new Promise(resolve => setTimeout(resolve, 500));
+                    wait.then(() => {
+                        flatListRef.current?.scrollToIndex({ index: info.index, animated: true });
+                    });
+                }}
+                nestedScrollEnabled={true}
             />
+
+            {/* Button outside FlatList for better touch handling */}
+            <View style={styles.externalButtonContainer}>
+                <TouchableOpacity
+                    activeOpacity={0.8}
+                    onPress={handleNext}
+                    style={[styles.button, styles.filledButton]}
+                >
+                    <Text style={styles.buttonText}>
+                        {currentIndex === onboardingData.length - 1 ? "Get Started" : "Next"}
+                    </Text>
+                </TouchableOpacity>
+            </View>
         </View>
     );
 }
@@ -258,5 +283,30 @@ const styles = StyleSheet.create({
         width: 12,
         height: 8,
         borderRadius: 4,
+    },
+    buttonWrapper: {
+        marginTop: 10,
+    },
+    externalButtonContainer: {
+        position: 'absolute',
+        bottom: 60,
+        left: 30,
+        right: 30,
+        zIndex: 10,
+    },
+    button: {
+        borderRadius: 12,
+        paddingVertical: 16,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 16,
+    },
+    filledButton: {
+        backgroundColor: '#374151',
+    },
+    buttonText: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#FFFFFF',
     },
 });
