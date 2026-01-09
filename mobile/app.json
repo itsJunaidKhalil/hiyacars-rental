@@ -36,7 +36,8 @@
       "router": {},
       "eas": {
         "projectId": "02f53030-a404-44ab-836f-86b08bfc031e"
-      }
+      },
+      "EXPO_PUBLIC_API_URL": "${EXPO_PUBLIC_API_URL}"
     },
     "owner": "itsjunaidkhalil"
   }
