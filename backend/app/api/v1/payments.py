@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, status, Depends, Header
 from typing import Optional
 from app.models.payment import Payment, PaymentCreate, PaymentIntentResponse, PaymentStatus
 from app.models.booking import Booking, BookingStatus
-from app.auth import get_current_user, require_role
+from app.auth_supabase import get_current_user, require_role
 from app.models.user import User, UserRole
 from app.database import get_supabase
 from config import settings
