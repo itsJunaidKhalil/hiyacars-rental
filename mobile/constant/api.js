@@ -4,9 +4,31 @@
 // For physical device, use your computer's local IP: http://192.168.1.XXX:8000
 
 import { Platform } from 'react-native';
+import Constants from 'expo-constants';
 
-// Determine the API base URL based on platform
+// Get API URL from environment variables
+// Priority: 1. EXPO_PUBLIC_API_URL, 2. Platform-specific defaults
 const getApiBaseUrl = () => {
+  // Check if EXPO_PUBLIC_API_URL is set (works for both dev and production)
+  // Try process.env first (more reliable), then Constants
+  let envApiUrl = process.env.EXPO_PUBLIC_API_URL || 
+                  Constants.expoConfig?.extra?.EXPO_PUBLIC_API_URL;
+  
+  // Skip if it's a template string (not interpolated)
+  if (envApiUrl && envApiUrl.includes('${')) {
+    envApiUrl = null;
+  }
+  
+  if (envApiUrl) {
+    // If environment variable is set, use it
+    // For local development on Android emulator, replace localhost
+    if (__DEV__ && Platform.OS === 'android' && envApiUrl.includes('localhost')) {
+      return envApiUrl.replace('localhost', '10.0.2.2');
+    }
+    return envApiUrl;
+  }
+  
+  // Fallback to platform-specific defaults (for backward compatibility)
   if (__DEV__) {
     // Development mode
     if (Platform.OS === 'android') {
@@ -20,12 +42,19 @@ const getApiBaseUrl = () => {
       return 'http://localhost:8000';
     }
   } else {
-    // Production mode - update this with your production API URL
+    // Production mode - this should be set via EAS secrets
+    console.warn('⚠️ EXPO_PUBLIC_API_URL not set! Please configure environment variables.');
     return 'https://your-production-api.com';
   }
 };
 
 export const API_BASE_URL = getApiBaseUrl();
+
+// Debug: Log the API URL being used
+console.log('🔗 API_BASE_URL:', API_BASE_URL);
+console.log('📱 Platform:', Platform.OS);
+console.log('🔧 ENV from Constants:', Constants.expoConfig?.extra?.EXPO_PUBLIC_API_URL);
+console.log('🔧 ENV from process:', process.env.EXPO_PUBLIC_API_URL);
 
 export const API_ENDPOINTS = {
   // Auth endpoints
