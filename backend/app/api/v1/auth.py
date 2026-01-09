@@ -1,7 +1,8 @@
 from fastapi import APIRouter, HTTPException, status, Depends, UploadFile, File
 from fastapi.security import OAuth2PasswordRequestForm
 from app.models.user import User, UserCreate, UserResponse, UserUpdate
-from app.auth_supabase import get_current_user, create_access_token
+from app.auth_supabase import get_current_user
+from app.auth import create_access_token
 from app.database import get_supabase
 from app.storage import upload_file
 from passlib.context import CryptContext
