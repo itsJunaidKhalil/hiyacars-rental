@@ -1,5 +1,12 @@
 # Mobile App Setup Guide
 
+## Prerequisites
+
+- Node.js 18.x or higher
+- npm or yarn
+- Expo CLI: `npm install -g @expo/cli`
+- Expo Go app (for testing on physical devices)
+
 ## ✅ Step 1: Install Dependencies
 
 Run the following command in the `mobile` directory:
@@ -9,9 +16,31 @@ cd mobile
 npm install
 ```
 
-This will install all dependencies including the new `@react-native-async-storage/async-storage` package.
+This will install all dependencies including:
+- React Native & Expo
+- Supabase JS client
+- AsyncStorage for token persistence
+- Expo ImagePicker & DocumentPicker for file uploads
 
-## ✅ Step 2: Configure API Base URL
+## ✅ Step 2: Configure Environment Variables
+
+Create a `.env` file in the `mobile` directory:
+
+```env
+# Supabase Configuration
+EXPO_PUBLIC_SUPABASE_URL=https://wcxmmdujcujrvhwmqyjq.supabase.co
+EXPO_PUBLIC_SUPABASE_ANON_KEY=your_anon_key_here
+
+# API Configuration (for development)
+EXPO_PUBLIC_API_URL=http://localhost:8000
+
+# For production (after deploying backend to Railway)
+# EXPO_PUBLIC_API_URL=https://your-app.railway.app
+```
+
+**Note**: Make sure to update these values with your actual Supabase credentials.
+
+## ✅ Step 3: Configure API Base URL
 
 The API base URL is automatically configured in `constant/api.js` based on your platform:
 
@@ -34,7 +63,7 @@ const getApiBaseUrl = () => {
     // For physical device, replace with your computer's IP
     return 'http://192.168.1.XXX:8000'; // Replace XXX with your IP
   }
-  // ...
+  return process.env.EXPO_PUBLIC_API_URL || 'https://your-production-api.railway.app';
 };
 ```
 
@@ -43,9 +72,54 @@ const getApiBaseUrl = () => {
    uvicorn main:app --reload --host 0.0.0.0 --port 8000
    ```
 
-4. Make sure your computer and mobile device are on the same WiFi network.
+4. Ensure your computer and mobile device are on the same WiFi network.
 
-## ✅ Step 3: Update Backend CORS Settings
+## ✅ Step 4: File Upload Features
+
+The app now includes **Supabase Storage** integration for file uploads:
+
+### Available Storage Functions:
+
+Located in `services/storage.js`:
+
+```javascript
+import {
+  uploadAvatar,           // Upload profile picture
+  uploadKYCDocument,      // Upload ID/passport/license
+  uploadVehicleImage,     // Upload car photos
+  pickImageFromCamera,    // Take photo with camera
+  pickImageFromGallery,   // Select from gallery
+  pickDocument,           // Select PDF/document
+} from './services/storage';
+```
+
+### Example Usage:
+
+```javascript
+// Upload profile picture
+const image = await pickImageFromGallery();
+const avatarUrl = await uploadAvatar(userId, image);
+
+// Upload KYC document
+const kycImage = await pickImageFromCamera();
+const kycUrl = await uploadKYCDocument(userId, 'emirates_id', 'front', kycImage);
+
+// Upload vehicle image
+const vehicleImage = await pickImageFromGallery();
+const vehicleUrl = await uploadVehicleImage(vehicleId, vehicleImage);
+```
+
+### Required Supabase Buckets:
+
+Make sure these buckets are created in Supabase Dashboard:
+- `avatars` (for profile pictures)
+- `kyc-documents` (for ID verification)
+- `vehicle-images` (for car photos)
+- `contracts` (for rental agreements)
+
+See `SUPABASE_STORAGE_SETUP.md` in the root directory for setup instructions.
+
+## ✅ Step 5: Update Backend CORS Settings (Optional)
 
 In your backend `.env` file, make sure CORS_ORIGINS includes your mobile app origins:
 
@@ -59,9 +133,9 @@ Or you can update `config.py` to allow all origins in development:
 CORS_ORIGINS: str = "*"  # Only for development
 ```
 
-## ✅ Step 4: Test the Connection
+## ✅ Step 6: Test the Connection
 
-1. **Start the backend server**:
+1. **Start the backend server** (or use Railway URL):
    ```bash
    cd backend
    uvicorn main:app --reload --host 0.0.0.0 --port 8000
@@ -74,21 +148,37 @@ CORS_ORIGINS: str = "*"  # Only for development
    # Then press 'a' for Android or 'i' for iOS
    ```
 
-3. **Test Registration**:
-   - Open the app
-   - Navigate to Sign Up
-   - Fill in the form and submit
-   - You should see a success message
+3. **Test Features**:
+   - ✅ User registration
+   - ✅ User login
+   - ✅ Profile picture upload
+   - ✅ Vehicle listing
+   - ✅ KYC document upload
+   - ✅ Booking flow
 
-4. **Test Login**:
-   - Use the credentials you just created
-   - You should be logged in and redirected to the home screen
+## ✅ Step 7: Building APK/AAB
 
-5. **Test Vehicle Listing**:
-   - The home screen should load vehicles from the backend
-   - If no vehicles are shown, make sure you've created some test vehicles in Supabase
+### Development Build:
 
-## ✅ Step 5: Create Test Data
+```bash
+eas build --profile preview --platform android
+```
+
+### Production Build:
+
+```bash
+eas build --profile production --platform android
+```
+
+**Note**: Make sure environment variables are configured in EAS:
+
+```bash
+eas secret:create --scope project --name EXPO_PUBLIC_SUPABASE_URL --value "https://your-project.supabase.co"
+eas secret:create --scope project --name EXPO_PUBLIC_SUPABASE_ANON_KEY --value "your_key"
+eas secret:create --scope project --name EXPO_PUBLIC_API_URL --value "https://your-app.railway.app"
+```
+
+## ✅ Step 8: Create Test Data
 
 If you haven't already, create some test vehicles in your Supabase database:
 
@@ -127,9 +217,17 @@ INSERT INTO vehicles (
 
 ### Authentication not working
 
-1. **Check token storage**: Verify AsyncStorage is working
-2. **Check API response**: Look at network requests in React Native Debugger
-3. **Check backend logs**: Look for errors in backend console
+1. **Check Supabase credentials**: Verify `.env` has correct Supabase URL and key
+2. **Check token storage**: Verify AsyncStorage is working
+3. **Check API response**: Look at network requests in React Native Debugger
+4. **Check backend logs**: Look for errors in backend console
+
+### File upload not working
+
+1. **Check Supabase buckets**: Verify buckets are created in Supabase Dashboard
+2. **Check RLS policies**: Ensure proper access policies are configured
+3. **Check permissions**: Camera/gallery permissions must be granted
+4. **Check file size**: Max 2MB for avatars, 5MB for vehicle images, 10MB for documents
 
 ### Vehicles not loading
 
@@ -138,13 +236,17 @@ INSERT INTO vehicles (
 3. **Check network requests**: Use React Native Debugger to see API calls
 4. **Check error logs**: Look for errors in app console
 
-## 📱 Next Steps
+## 📱 Features Implemented
 
-1. **Complete Booking Flow**: Update BookingDetailsScreen to use API
-2. **Add Payment Integration**: Integrate Stripe in PaymentMethodsScreen
-3. **Add KYC Flow**: Implement document upload for KYC
-4. **Add Profile Management**: Update AccountScreen to show user data
-5. **Add Search Functionality**: Implement vehicle search with filters
+- ✅ User authentication (Supabase Auth)
+- ✅ Profile management with avatar upload
+- ✅ Vehicle browsing and search
+- ✅ KYC verification with document upload
+- ✅ Booking flow
+- ✅ Payment integration (Stripe)
+- ✅ File uploads (Supabase Storage)
+- ✅ Offline token persistence (AsyncStorage)
+- ✅ Deep linking for OAuth callbacks
 
 ## 🎯 Testing Checklist
 
@@ -152,8 +254,26 @@ INSERT INTO vehicles (
 - [ ] User registration works
 - [ ] User login works
 - [ ] Token is stored correctly
+- [ ] Profile picture upload works
 - [ ] Vehicles are fetched and displayed
+- [ ] KYC document upload works
 - [ ] Pull-to-refresh works
 - [ ] Error handling works (network errors, etc.)
+- [ ] Camera/gallery picker works
+- [ ] File uploads to Supabase Storage work
+
+## 📚 Next Steps
+
+1. **Deploy Backend**: Deploy to Railway for production URL
+2. **Update API URL**: Point mobile app to Railway URL
+3. **Test File Uploads**: Verify all upload features work in production
+4. **Submit to Stores**: Build production APK/IPA and submit to app stores
+
+## 🔗 Useful Links
+
+- [Supabase Storage Docs](https://supabase.com/docs/guides/storage)
+- [Expo ImagePicker Docs](https://docs.expo.dev/versions/latest/sdk/imagepicker/)
+- [EAS Build Docs](https://docs.expo.dev/build/introduction/)
+- [Railway Deployment Guide](https://docs.railway.app/)
 
 
