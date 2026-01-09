@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "carRental",
-    "slug": "carRental",
+    "slug": "carRental-v2",
     "version": "1.0.0",
     "scheme": "car-rental",
     "orientation": "portrait",
@@ -32,12 +32,12 @@
       "expo-router",
       "expo-font"
     ],
-    "scheme": "car-rental",
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "90d86bfe-bbcc-45ae-8a0f-8960413d7e2b"
+        "projectId": "02f53030-a404-44ab-836f-86b08bfc031e"
       }
-    }
+    },
+    "owner": "itsjunaidkhalil"
   }
 }
