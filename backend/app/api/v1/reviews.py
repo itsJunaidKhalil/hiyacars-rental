@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, status, Depends
 from typing import List, Optional
 from app.models.review import Review, ReviewCreate, ReviewUpdate
 from app.models.booking import Booking, BookingStatus
-from app.auth import get_current_user
+from app.auth_supabase import get_current_user
 from app.models.user import User
 from app.database import get_supabase
 from datetime import datetime

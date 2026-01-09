@@ -4,7 +4,7 @@ from app.models.vehicle import (
     Vehicle, VehicleCreate, VehicleUpdate, VehicleSearchParams,
     VehicleStatus, VehicleCategory
 )
-from app.auth import get_current_user, require_role
+from app.auth_supabase import get_current_user, require_role
 from app.models.user import User, UserRole
 from app.database import get_supabase
 from app.storage import upload_file, storage
