@@ -7,50 +7,11 @@ from app.models.kyc import (
 from app.auth import get_current_user, require_role
 from app.models.user import User, UserRole
 from app.database import get_supabase
+from app.storage import upload_file
 from datetime import datetime
 import uuid
-import boto3
-from config import settings
 
 router = APIRouter()
-
-# Initialize S3 client (for file uploads) - only if AWS is configured
-s3_client = None
-if settings.AWS_ACCESS_KEY_ID and settings.AWS_SECRET_ACCESS_KEY:
-    try:
-        s3_client = boto3.client(
-            's3',
-            aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
-            aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
-            region_name=settings.AWS_REGION
-        )
-    except Exception:
-        s3_client = None
-
-
-async def upload_file_to_s3(file: UploadFile, folder: str) -> str:
-    """Upload file to S3 and return URL"""
-    if not s3_client or not settings.AWS_BUCKET_NAME:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="File upload service is not configured. Please configure AWS S3 keys."
-        )
-    
-    file_key = f"{folder}/{uuid.uuid4()}_{file.filename}"
-    
-    try:
-        s3_client.upload_fileobj(
-            file.file,
-            settings.AWS_BUCKET_NAME,
-            file_key,
-            ExtraArgs={'ContentType': file.content_type}
-        )
-        return f"https://{settings.AWS_BUCKET_NAME}.s3.{settings.AWS_REGION}.amazonaws.com/{file_key}"
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to upload file: {str(e)}"
-        )
 
 
 @router.post("/", response_model=KYC, status_code=status.HTTP_201_CREATED)
@@ -133,8 +94,12 @@ async def upload_document(
     
     kyc = kyc_response.data[0]
     
-    # Upload file
-    file_url = await upload_file_to_s3(file, f"kyc/{current_user.id}")
+    # Upload file to Supabase Storage
+    file_url = await upload_file(
+        file=file,
+        bucket="kyc-documents",
+        folder=f"{current_user.id}/{document_type.value}"
+    )
     
     # Update KYC with document URL
     update_field = None
@@ -190,8 +155,12 @@ async def upload_signature(
     
     kyc = kyc_response.data[0]
     
-    # Upload signature
-    signature_url = await upload_file_to_s3(file, f"kyc/{current_user.id}/signatures")
+    # Upload signature to Supabase Storage
+    signature_url = await upload_file(
+        file=file,
+        bucket="kyc-documents",
+        folder=f"{current_user.id}/signatures"
+    )
     
     # Update KYC
     response = supabase.table("kyc").update({
