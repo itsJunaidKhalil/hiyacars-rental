@@ -1,0 +1,137 @@
+===============================================================================
+RAILWAY ENVIRONMENT VARIABLES - Quick Reference
+===============================================================================
+
+Copy these environment variables to your Railway dashboard:
+Go to: Railway Project → Service → Variables tab
+
+===============================================================================
+REQUIRED VARIABLES (Must be set for app to work)
+===============================================================================
+
+SUPABASE_URL=https://wcxmmdujcujrvhwmqyjq.supabase.co
+
+SUPABASE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndjeG1tZHVqY3VqcnZod21xeWpxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI2MDgzODQsImV4cCI6MjA3ODE4NDM4NH0.nE_benybtak0R8ZXVvBntpwh3qGBB_IK0LFAZp6a7m0
+
+SUPABASE_SERVICE_KEY=[GET THIS FROM SUPABASE DASHBOARD > SETTINGS > API > service_role key]
+
+SECRET_KEY=[GENERATE A RANDOM 32+ CHARACTER STRING - See below for how]
+
+ALGORITHM=HS256
+
+ACCESS_TOKEN_EXPIRE_MINUTES=30
+
+ENVIRONMENT=production
+
+DEBUG=False
+
+CORS_ORIGINS=*
+
+PLATFORM_FEE_PERCENTAGE=10.0
+
+===============================================================================
+HOW TO GET SUPABASE_SERVICE_KEY
+===============================================================================
+
+1. Go to https://supabase.com/dashboard
+2. Select your project: wcxmmdujcujrvhwmqyjq
+3. Click "Settings" (gear icon) in left sidebar
+4. Click "API" section
+5. Scroll to "Project API keys"
+6. Copy the "service_role" key (⚠️ KEEP THIS SECRET - don't share publicly)
+
+===============================================================================
+HOW TO GENERATE SECRET_KEY
+===============================================================================
+
+Use one of these methods:
+
+Method 1 - Python:
+python -c "import secrets; print(secrets.token_urlsafe(32))"
+
+Method 2 - OpenSSL:
+openssl rand -base64 32
+
+Method 3 - Online Generator:
+https://www.random.org/strings/ (generate 32+ random characters)
+
+===============================================================================
+OPTIONAL VARIABLES (Add if using these services)
+===============================================================================
+
+# Stripe (for payment processing)
+STRIPE_SECRET_KEY=sk_test_your_stripe_secret_key
+STRIPE_PUBLISHABLE_KEY=pk_test_your_stripe_publishable_key
+STRIPE_WEBHOOK_SECRET=whsec_your_webhook_secret
+
+# Google OAuth (for Google login)
+GOOGLE_CLIENT_ID=your_google_client_id
+GOOGLE_CLIENT_SECRET=your_google_client_secret
+
+# Facebook OAuth (for Facebook login)
+FACEBOOK_APP_ID=your_facebook_app_id
+FACEBOOK_APP_SECRET=your_facebook_app_secret
+
+# RTA (for contract submission in UAE)
+RTA_API_URL=https://api.rta.ae/sandbox
+RTA_API_KEY=your_rta_api_key
+RTA_ENVIRONMENT=sandbox
+
+===============================================================================
+VARIABLES NO LONGER NEEDED (Removed - using Supabase Storage now)
+===============================================================================
+
+❌ AWS_ACCESS_KEY_ID
+❌ AWS_SECRET_ACCESS_KEY
+❌ AWS_BUCKET_NAME
+❌ AWS_REGION
+❌ REDIS_URL (optional, only if using background tasks)
+
+===============================================================================
+AFTER ADDING VARIABLES
+===============================================================================
+
+1. Railway will automatically redeploy your app
+2. Check deployment logs for any errors
+3. Once deployed, copy your Railway URL (e.g., https://hiyacars-rental-production.up.railway.app)
+4. Update your mobile app with this URL
+
+===============================================================================
+TESTING YOUR DEPLOYMENT
+===============================================================================
+
+1. Visit: https://your-app.railway.app/docs
+   (You should see FastAPI Swagger documentation)
+
+2. Test health endpoint:
+   https://your-app.railway.app/health
+
+3. Test API from mobile app
+
+===============================================================================
+TROUBLESHOOTING
+===============================================================================
+
+If deployment fails:
+1. Check Railway logs (Deployments tab → Click deployment → View logs)
+2. Verify all REQUIRED variables are set
+3. Make sure Root Directory is set to "backend"
+4. Check Python version (should be 3.10 from runtime.txt)
+
+If app crashes:
+1. Check for missing environment variables in logs
+2. Verify SUPABASE_URL and SUPABASE_KEY are correct
+3. Make sure SUPABASE_SERVICE_KEY is set
+
+===============================================================================
+NOTES
+===============================================================================
+
+- Railway automatically provides $PORT variable (don't set it manually)
+- CORS_ORIGINS="*" allows all origins (for development)
+  For production, replace with: CORS_ORIGINS=https://your-domain.com
+- Make sure to set DEBUG=False in production for security
+- Supabase Storage buckets must be created separately (see SUPABASE_STORAGE_SETUP.md)
+
+===============================================================================
+
