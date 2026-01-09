@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, status, Depends, Query
+from fastapi import APIRouter, HTTPException, status, Depends, Query, UploadFile, File
 from typing import List, Optional
 from app.models.vehicle import (
     Vehicle, VehicleCreate, VehicleUpdate, VehicleSearchParams,
@@ -7,6 +7,7 @@ from app.models.vehicle import (
 from app.auth import get_current_user, require_role
 from app.models.user import User, UserRole
 from app.database import get_supabase
+from app.storage import upload_file, storage
 from datetime import datetime
 import uuid
 
@@ -230,6 +231,107 @@ async def check_availability(
         "end_date": end_date,
         "available": is_available,
         "conflicting_bookings": len(bookings.data)
+    }
+
+
+@router.post("/{vehicle_id}/images")
+async def upload_vehicle_image(
+    vehicle_id: str,
+    file: UploadFile = File(...),
+    current_user: User = Depends(require_role([UserRole.ORG_ADMIN, UserRole.AGENCY_ADMIN]))
+):
+    """Upload vehicle image (Admin only)"""
+    supabase = get_supabase()
+    
+    # Check if vehicle exists
+    vehicle_response = supabase.table("vehicles").select("*").eq("id", vehicle_id).execute()
+    if not vehicle_response.data:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Vehicle not found"
+        )
+    
+    vehicle = vehicle_response.data[0]
+    
+    # Validate file type (images only)
+    if not file.content_type or not file.content_type.startswith('image/'):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Only image files are allowed"
+        )
+    
+    # Upload image to Supabase Storage
+    image_url = await upload_file(
+        file=file,
+        bucket="vehicle-images",
+        folder=vehicle_id
+    )
+    
+    # Update vehicle's images array
+    current_images = vehicle.get("images", []) or []
+    current_images.append(image_url)
+    
+    # Update vehicle
+    response = supabase.table("vehicles").update({
+        "images": current_images,
+        "updated_at": datetime.utcnow().isoformat()
+    }).eq("id", vehicle_id).execute()
+    
+    return {
+        "message": "Image uploaded successfully",
+        "image_url": image_url,
+        "vehicle": Vehicle(**response.data[0])
+    }
+
+
+@router.delete("/{vehicle_id}/images")
+async def delete_vehicle_image(
+    vehicle_id: str,
+    image_url: str,
+    current_user: User = Depends(require_role([UserRole.ORG_ADMIN, UserRole.AGENCY_ADMIN]))
+):
+    """Delete vehicle image (Admin only)"""
+    supabase = get_supabase()
+    
+    # Check if vehicle exists
+    vehicle_response = supabase.table("vehicles").select("*").eq("id", vehicle_id).execute()
+    if not vehicle_response.data:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Vehicle not found"
+        )
+    
+    vehicle = vehicle_response.data[0]
+    current_images = vehicle.get("images", []) or []
+    
+    # Remove image URL from array
+    if image_url not in current_images:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Image not found in vehicle"
+        )
+    
+    current_images.remove(image_url)
+    
+    # Update vehicle
+    response = supabase.table("vehicles").update({
+        "images": current_images,
+        "updated_at": datetime.utcnow().isoformat()
+    }).eq("id", vehicle_id).execute()
+    
+    # Try to delete from storage (best effort)
+    try:
+        # Extract path from URL
+        path_parts = image_url.split('/vehicle-images/')
+        if len(path_parts) > 1:
+            file_path = path_parts[1].split('?')[0]  # Remove query params
+            await storage.delete_file("vehicle-images", file_path)
+    except Exception:
+        pass  # File might be already deleted or URL format different
+    
+    return {
+        "message": "Image deleted successfully",
+        "vehicle": Vehicle(**response.data[0])
     }
 
 

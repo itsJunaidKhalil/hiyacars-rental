@@ -1,8 +1,9 @@
-from fastapi import APIRouter, HTTPException, status, Depends
+from fastapi import APIRouter, HTTPException, status, Depends, UploadFile, File
 from fastapi.security import OAuth2PasswordRequestForm
 from app.models.user import User, UserCreate, UserResponse, UserUpdate
 from app.auth import get_current_user, create_access_token
 from app.database import get_supabase
+from app.storage import upload_file
 from passlib.context import CryptContext
 from datetime import datetime
 import uuid
@@ -265,6 +266,48 @@ async def refresh_token(current_user: User = Depends(get_current_user)):
    return {
        "access_token": access_token,
        "token_type": "bearer"
+   }
+
+
+@router.post("/me/avatar")
+async def upload_avatar(
+   file: UploadFile = File(...),
+   current_user: User = Depends(get_current_user)
+):
+   """Upload user profile picture"""
+   supabase = get_supabase()
+   
+   # Validate file type (images only)
+   if not file.content_type or not file.content_type.startswith('image/'):
+       raise HTTPException(
+           status_code=status.HTTP_400_BAD_REQUEST,
+           detail="Only image files are allowed"
+       )
+   
+   # Upload avatar to Supabase Storage
+   avatar_url = await upload_file(
+       file=file,
+       bucket="avatars",
+       folder=current_user.id,
+       file_name="avatar.jpg"  # Always overwrite the same file
+   )
+   
+   # Update user profile
+   response = supabase.table("users").update({
+       "profile_picture": avatar_url,
+       "updated_at": datetime.utcnow().isoformat()
+   }).eq("id", current_user.id).execute()
+   
+   if not response.data:
+       raise HTTPException(
+           status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+           detail="Failed to update profile"
+       )
+   
+   return {
+       "message": "Avatar uploaded successfully",
+       "avatar_url": avatar_url,
+       "user": UserResponse(**response.data[0])
    }
 
 

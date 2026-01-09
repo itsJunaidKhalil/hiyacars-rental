@@ -29,14 +29,8 @@ class Settings(BaseSettings):
     RTA_API_KEY: str = ""
     RTA_ENVIRONMENT: str = "sandbox"
     
-    # Redis/Celery
+    # Redis/Celery (Optional - for background tasks)
     REDIS_URL: str = "redis://localhost:6379/0"
-    
-    # AWS S3
-    AWS_ACCESS_KEY_ID: str = ""
-    AWS_SECRET_ACCESS_KEY: str = ""
-    AWS_BUCKET_NAME: str = ""
-    AWS_REGION: str = "us-east-1"
     
     # App Settings
     ENVIRONMENT: str = "development"
